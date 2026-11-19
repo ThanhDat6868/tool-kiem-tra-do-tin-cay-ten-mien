@@ -1,0 +1,603 @@
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kiểm Tra Độ Tin Cậy Tên Miền</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: Arial, sans-serif; }
+    .score-ring {
+      width: 145px;
+      height: 145px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      border: 10px solid #dbeafe;
+      margin: auto;
+    }
+    .factor-bar {
+      height: 9px;
+      background: #e2e8f0;
+      border-radius: 20px;
+      overflow: hidden;
+    }
+    .factor-fill {
+      height: 100%;
+      background: #2563eb;
+      border-radius: 20px;
+      transition: width .4s;
+    }
+    button:disabled { opacity: .55; cursor: not-allowed; }
+  </style>
+</head>
+
+<body class="bg-slate-100 min-h-screen text-slate-800">
+  <header class="bg-white border-b">
+    <div class="max-w-5xl mx-auto px-5 py-6">
+      <h1 class="text-2xl md:text-3xl font-bold text-blue-700">
+        🛡️ Kiểm Tra Độ Tin Cậy Tên Miền
+      </h1>
+      <p class="text-slate-500 mt-2">
+        Phân tích DNS, HTTPS, cấu trúc và các tín hiệu tin cậy của website.
+      </p>
+    </div>
+  </header>
+
+  <main class="max-w-5xl mx-auto px-5 py-8">
+    <section class="bg-white rounded-xl shadow-sm p-6">
+      <h2 class="text-xl font-bold mb-2">Nhập tên miền cần kiểm tra</h2>
+      <p class="text-sm text-slate-500 mb-4">
+        Nhập tên miền hoặc URL đầy đủ, ví dụ: github.com
+      </p>
+
+      <div class="flex flex-wrap gap-2 mb-4">
+        <button onclick="setDomain('github.com')"
+          class="px-3 py-2 rounded-lg bg-blue-50 text-blue-700 text-sm">
+          github.com
+        </button>
+        <button onclick="setDomain('wikipedia.org')"
+          class="px-3 py-2 rounded-lg bg-blue-50 text-blue-700 text-sm">
+          wikipedia.org
+        </button>
+        <button onclick="setDomain('stackoverflow.com')"
+          class="px-3 py-2 rounded-lg bg-blue-50 text-blue-700 text-sm">
+          stackoverflow.com
+        </button>
+        <button onclick="setDomain('miniwebtool.com')"
+          class="px-3 py-2 rounded-lg bg-blue-50 text-blue-700 text-sm">
+          miniwebtool.com
+        </button>
+      </div>
+
+      <input id="domainInput" type="text"
+        placeholder="Nhập tên miền, ví dụ: example.com"
+        class="w-full border border-slate-300 rounded-lg px-4 py-3 outline-none focus:ring-2 focus:ring-blue-400">
+
+      <div class="flex flex-wrap gap-3 mt-5">
+        <button id="checkBtn" onclick="checkDomain()"
+          class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-lg">
+          🔍 Kiểm tra độ tin cậy
+        </button>
+        <button onclick="resetTool()"
+          class="bg-slate-200 hover:bg-slate-300 px-6 py-3 rounded-lg">
+          Xóa dữ liệu
+        </button>
+      </div>
+
+      <p id="message" class="text-sm text-slate-500 mt-4"></p>
+    </section>
+
+    <section id="resultSection" class="hidden mt-7 space-y-6">
+      <div class="bg-white rounded-xl shadow-sm p-6">
+        <div class="text-center mb-6">
+          <p class="text-sm text-slate-500">Kết quả phân tích tên miền</p>
+          <h2 id="domainName" class="text-xl font-bold mt-1 break-all"></h2>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-8">
+          <div class="text-center">
+            <div class="score-ring" id="dtsRing">
+              <span id="dtsScore" class="text-4xl font-bold">0</span>
+              <span class="text-xs text-slate-500">/ 100 DTS</span>
+            </div>
+            <h3 class="font-bold mt-4">Điểm tin cậy tên miền</h3>
+            <p id="dtsRank" class="text-sm mt-1 text-blue-700"></p>
+          </div>
+
+          <div class="text-center">
+            <div class="score-ring" id="ptsRing">
+              <span id="ptsScore" class="text-4xl font-bold">0</span>
+              <span class="text-xs text-slate-500">/ 100 PTS</span>
+            </div>
+            <h3 class="font-bold mt-4">Điểm tin cậy trang</h3>
+            <p class="text-sm text-slate-500 mt-1">
+              Điểm ước tính suy ra từ DTS
+            </p>
+          </div>
+        </div>
+
+        <div class="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+          ⚠️ Điểm số chỉ phản ánh một số tín hiệu kỹ thuật và cấu trúc có thể quan sát. Điểm cao không đồng nghĩa website không lừa đảo hoặc chắc chắn an toàn.
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm p-6">
+        <div class="flex flex-wrap justify-between items-center gap-3 mb-5">
+          <h3 class="text-xl font-bold">Phân tích 6 yếu tố</h3>
+          <button onclick="copyReport()"
+            class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm">
+            Sao chép báo cáo
+          </button>
+        </div>
+        <div id="factorList" class="space-y-5"></div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm p-6">
+        <h3 class="text-xl font-bold mb-4">Thông tin kiểm tra kỹ thuật</h3>
+        <div id="technicalInfo" class="space-y-3 text-sm"></div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm p-6">
+        <h3 class="text-xl font-bold mb-4">💡 Khuyến nghị</h3>
+        <div id="recommendations" class="space-y-2 text-sm"></div>
+      </div>
+    </section>
+
+    <section class="mt-7 bg-blue-50 border border-blue-100 rounded-xl p-5">
+      <h3 class="font-bold text-blue-800 mb-3">Cách đọc điểm số</h3>
+      <div class="space-y-2 text-sm">
+        <p><b class="text-red-600">0–19:</b> Thấp – có nhiều tín hiệu cần chú ý.</p>
+        <p><b class="text-orange-600">20–39:</b> Trung bình – cần kiểm tra thêm.</p>
+        <p><b class="text-blue-600">40–59:</b> Tốt – có một số tín hiệu tích cực.</p>
+        <p><b class="text-green-600">60–100:</b> Xuất sắc – các tín hiệu được đánh giá tương đối tốt.</p>
+      </div>
+    </section>
+
+    <p class="text-xs text-slate-500 mt-5 leading-relaxed">
+      Công cụ sử dụng DNS công khai và phân tích heuristic. Không kết nối cơ sở dữ liệu chống lừa đảo, không xác minh danh tính chủ website và không thay thế các dịch vụ kiểm tra an toàn chuyên dụng.
+    </p>
+  </main>
+
+<script>
+  const DNS_API = "https://cloudflare-dns.com/dns-query";
+  const RDAP_API = "https://rdap.org/domain/";
+
+  let lastReport = null;
+
+  function setDomain(value) {
+    document.getElementById("domainInput").value = value;
+  }
+
+  function normalizeDomain(value) {
+    let input = value.trim();
+    if (!input) throw new Error("Vui lòng nhập tên miền.");
+
+    if (!/^https?:\/\//i.test(input)) {
+      input = "https://" + input;
+    }
+
+    const url = new URL(input);
+    let hostname = url.hostname.toLowerCase().replace(/\.$/, "");
+
+    if (hostname.startsWith("www.")) {
+      hostname = hostname.slice(4);
+    }
+
+    if (
+      hostname.length > 253 ||
+      !hostname.includes(".") ||
+      !/^[a-z0-9.-]+$/.test(hostname) ||
+      hostname.split(".").some(part =>
+        !part || part.length > 63 ||
+        !/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(part)
+      )
+    ) {
+      throw new Error("Tên miền không hợp lệ. Hãy kiểm tra lại.");
+    }
+
+    return { domain: hostname, protocol: url.protocol };
+  }
+
+  async function dnsLookup(domain, type) {
+    const response = await fetch(
+      `${DNS_API}?name=${encodeURIComponent(domain)}&type=${type}`,
+      { headers: { Accept: "application/dns-json" } }
+    );
+
+    if (!response.ok) throw new Error("Không truy vấn được DNS.");
+
+    const data = await response.json();
+    return {
+      status: data.Status,
+      answers: data.Answer || []
+    };
+  }
+
+  async function checkDNS(domain) {
+    const results = await Promise.allSettled([
+      dnsLookup(domain, "A"),
+      dnsLookup(domain, "AAAA"),
+      dnsLookup(domain, "MX"),
+      dnsLookup(domain, "NS")
+    ]);
+
+    const names = ["A", "AAAA", "MX", "NS"];
+    const records = {};
+
+    results.forEach((result, index) => {
+      records[names[index]] = result.status === "fulfilled"
+        ? result.value
+        : null;
+    });
+
+    const hasA = !!records.A?.answers.length;
+    const hasAAAA = !!records.AAAA?.answers.length;
+    const hasMX = !!records.MX?.answers.length;
+    const hasNS = !!records.NS?.answers.length;
+
+    const reachable = hasA || hasAAAA;
+    const successful = Object.values(records).filter(Boolean).length;
+
+    let score = 0;
+    if (reachable) score += 15;
+    if (hasNS) score += 5;
+    if (hasMX) score += 5;
+
+    if (successful === 4) score += 25;
+    else if (successful >= 2) score += 15;
+    else if (successful === 1) score += 5;
+
+    return {
+      score,
+      reachable,
+      hasA,
+      hasAAAA,
+      hasMX,
+      hasNS,
+      records,
+      lookupFailed: successful === 0
+    };
+  }
+
+  async function checkRegistration(domain) {
+    try {
+      const response = await fetch(
+        RDAP_API + encodeURIComponent(domain)
+      );
+
+      if (!response.ok) return null;
+
+      const data = await response.json();
+      const events = data.events || [];
+
+      const created = events.find(event =>
+        /registration|registered/i.test(event.eventAction || "")
+      );
+
+      return created?.eventDate ? new Date(created.eventDate) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function calculateAgeScore(date) {
+    if (!date || Number.isNaN(date.getTime())) return null;
+
+    const years = (Date.now() - date.getTime()) /
+      (365.25 * 24 * 60 * 60 * 1000);
+
+    if (years < 0) return 0;
+    if (years < 0.5) return 15;
+    if (years < 1) return 30;
+    if (years < 2) return 50;
+    if (years < 5) return 75;
+    return 100;
+  }
+
+  function analyzeStructure(domain) {
+    const parts = domain.split(".");
+    const name = parts[0];
+    const labels = parts.length;
+    const hyphens = (name.match(/-/g) || []).length;
+    const digits = (name.match(/[0-9]/g) || []).length;
+
+    let score = 100;
+
+    if (name.length > 20) score -= 20;
+    else if (name.length > 14) score -= 10;
+
+    score -= Math.min(hyphens * 12, 36);
+    score -= Math.min(digits * 8, 32);
+
+    if (labels > 3) score -= 15;
+    if (name.length < 3) score -= 10;
+
+    return {
+      score: Math.max(0, Math.min(100, score)),
+      name,
+      labels,
+      hyphens,
+      digits
+    };
+  }
+
+  function analyzeBrand(domain) {
+    const name = domain.split(".")[0];
+    let score = 100;
+
+    if (name.length > 18) score -= 20;
+    if (name.length > 12) score -= 10;
+
+    const consonantGroups = name.match(/[bcdfghjklmnpqrstvwxyz]{4,}/gi) || [];
+    score -= consonantGroups.length * 15;
+
+    if (/[0-9]{3,}/.test(name)) score -= 15;
+    if (/[-_]/.test(name)) score -= 10;
+
+    return Math.max(0, Math.min(100, score));
+  }
+
+  function analyzeTLD(domain) {
+    const tld = domain.split(".").pop().toLowerCase();
+
+    const premium = ["com", "org", "net", "edu", "gov"];
+    const country = ["vn", "uk", "de", "jp", "us", "au", "ca", "fr"];
+
+    if (premium.includes(tld)) return 100;
+    if (country.includes(tld)) return 85;
+    if (["info", "biz", "io", "co", "me"].includes(tld)) return 70;
+    return 55;
+  }
+
+  function analyzeSSL(protocol) {
+    // Chỉ đánh giá URL có sử dụng HTTPS, không xác minh
+    // chứng chỉ TLS thực tế từ JavaScript trên trình duyệt.
+    return protocol === "https:" ? 85 : 0;
+  }
+
+  function rankScore(score) {
+    if (score < 20) return "Thấp";
+    if (score < 40) return "Trung bình";
+    if (score < 60) return "Tốt";
+    return "Xuất sắc";
+  }
+
+  function scoreColor(score) {
+    if (score < 20) return "#dc2626";
+    if (score < 40) return "#ea580c";
+    if (score < 60) return "#2563eb";
+    return "#16a34a";
+  }
+
+  function makeFactor(name, weight, score, detail) {
+    return { name, weight, score, detail };
+  }
+
+  function calculateScore(factors) {
+    const totalWeight = factors.reduce((sum, f) => sum + f.weight, 0);
+    return Math.round(
+      factors.reduce((sum, f) => sum + f.score * f.weight, 0) /
+      totalWeight
+    );
+  }
+
+  async function checkDomain() {
+    const button = document.getElementById("checkBtn");
+    const input = document.getElementById("domainInput");
+
+    let info;
+    try {
+      info = normalizeDomain(input.value);
+    } catch (error) {
+      showMessage(error.message, true);
+      return;
+    }
+
+    button.disabled = true;
+    button.textContent = "Đang phân tích...";
+    document.getElementById("resultSection").classList.add("hidden");
+    showMessage("Đang kiểm tra DNS và thông tin tên miền...", false);
+
+    try {
+      const [dns, registration] = await Promise.all([
+        checkDNS(info.domain),
+        checkRegistration(info.domain)
+      ]);
+
+      const structure = analyzeStructure(info.domain);
+      const tld = analyzeTLD(info.domain);
+      const ssl = analyzeSSL(info.protocol);
+      const brand = analyzeBrand(info.domain);
+
+      const ageScore = calculateAgeScore(registration);
+
+      // Nếu không lấy được ngày đăng ký, dùng điểm trung lập
+      // và đánh dấu rõ là dữ liệu chưa xác minh.
+      const effectiveBrand = brand;
+
+      const factors = [
+        makeFactor("Chất lượng TLD", 15, tld,
+          `Đuôi tên miền .${info.domain.split(".").pop()}`),
+
+        makeFactor("Độ dài tên miền", 5,
+          structure.name.length <= 8 ? 100 :
+          structure.name.length <= 14 ? 75 :
+          structure.name.length <= 20 ? 50 : 25,
+          `${structure.name.length} ký tự ở phần tên chính`),
+
+        makeFactor("Cấu trúc tên miền", 10, structure.score,
+          `${structure.labels} phần tên, ${structure.hyphens} dấu gạch ngang, ${structure.digits} chữ số`),
+
+        makeFactor("Tình trạng DNS", 25, dns.score,
+          dns.reachable ? "Đã tìm thấy bản ghi địa chỉ IP" :
+          dns.lookupFailed ? "Không lấy được dữ liệu DNS" :
+          "Chưa tìm thấy bản ghi A hoặc AAAA"),
+
+        makeFactor("Bảo mật SSL / HTTPS", 20, ssl,
+          info.protocol === "https:"
+            ? "URL sử dụng HTTPS (chưa xác minh chứng chỉ)"
+            : "URL không sử dụng HTTPS"),
+
+        makeFactor("Tín hiệu thương hiệu", 25, effectiveBrand,
+          "Ước lượng dựa trên độ dài và hình thức tên miền")
+      ];
+
+      const dts = calculateScore(factors);
+      const pts = Math.max(0, dts - 4);
+
+      const recommendations = [];
+
+      if (!dns.reachable) {
+        recommendations.push("Không tìm thấy bản ghi IP. Hãy kiểm tra lại DNS và trạng thái hoạt động của tên miền.");
+      }
+
+      if (!dns.hasNS) {
+        recommendations.push("Không tìm thấy bản ghi NS trong kết quả truy vấn. Cần kiểm tra cấu hình máy chủ tên miền.");
+      }
+
+      if (info.protocol !== "https:") {
+        recommendations.push("Nên sử dụng HTTPS và cấu hình chứng chỉ TLS hợp lệ.");
+      }
+
+      if (registration === null) {
+        recommendations.push("Không lấy được ngày đăng ký từ RDAP. Hãy kiểm tra thêm thông tin WHOIS/RDAP.");
+      }
+
+      if (structure.score < 70) {
+        recommendations.push("Nên sử dụng tên miền ngắn gọn, dễ đọc và hạn chế dấu gạch ngang hoặc chữ số.");
+      }
+
+      if (recommendations.length === 0) {
+        recommendations.push("Các tín hiệu được kiểm tra chưa phát hiện vấn đề nổi bật. Vẫn nên kiểm tra danh tính chủ website và nội dung trước khi giao dịch.");
+      }
+
+      lastReport = {
+        domain: info.domain,
+        dts,
+        pts,
+        factors,
+        dns,
+        registration,
+        recommendations,
+        protocol: info.protocol
+      };
+
+      displayReport(lastReport);
+      showMessage("Đã hoàn thành phân tích tên miền.", false);
+
+    } catch (error) {
+      showMessage(
+        "Không thể hoàn thành kiểm tra: " + error.message +
+        ". Hãy thử lại sau hoặc kiểm tra kết nối mạng.",
+        true
+      );
+    } finally {
+      button.disabled = false;
+      button.textContent = "🔍 Kiểm tra độ tin cậy";
+    }
+  }
+
+  function displayReport(report) {
+    document.getElementById("resultSection").classList.remove("hidden");
+    document.getElementById("domainName").textContent = report.domain;
+
+    document.getElementById("dtsScore").textContent = report.dts;
+    document.getElementById("ptsScore").textContent = report.pts;
+    document.getElementById("dtsRank").textContent = rankScore(report.dts);
+
+    document.getElementById("dtsRing").style.borderColor =
+      scoreColor(report.dts);
+    document.getElementById("ptsRing").style.borderColor =
+      scoreColor(report.pts);
+
+    document.getElementById("factorList").innerHTML =
+      report.factors.map(f => `
+        <div>
+          <div class="flex justify-between gap-3 mb-2">
+            <div>
+              <p class="font-semibold">${f.name}
+                <span class="text-xs text-slate-400">(${f.weight}%)</span>
+              </p>
+              <p class="text-xs text-slate-500 mt-1">${f.detail}</p>
+            </div>
+            <b class="text-blue-700">${Math.round(f.score)}/100</b>
+          </div>
+          <div class="factor-bar">
+            <div class="factor-fill" style="width:${f.score}%"></div>
+          </div>
+        </div>
+      `).join("");
+
+    const dns = report.dns;
+    const dnsRows = [
+      ["Bản ghi A", dns.hasA ? "Có" : "Không tìm thấy"],
+      ["Bản ghi AAAA", dns.hasAAAA ? "Có" : "Không tìm thấy"],
+      ["Bản ghi MX", dns.hasMX ? "Có" : "Không tìm thấy"],
+      ["Bản ghi NS", dns.hasNS ? "Có" : "Không tìm thấy"],
+      ["Giao thức nhập vào", report.protocol.toUpperCase()],
+      ["Ngày đăng ký", report.registration
+        ? report.registration.toLocaleDateString("vi-VN")
+        : "Chưa lấy được dữ liệu RDAP"]
+    ];
+
+    document.getElementById("technicalInfo").innerHTML =
+      dnsRows.map(row => `
+        <div class="flex justify-between gap-4 border-b pb-3">
+          <span class="text-slate-500">${row[0]}</span>
+          <b class="text-right">${row[1]}</b>
+        </div>
+      `).join("");
+
+    document.getElementById("recommendations").innerHTML =
+      report.recommendations.map(item => `
+        <div class="bg-slate-50 rounded-lg p-3">
+          💡 ${item}
+        </div>
+      `).join("");
+  }
+
+  function showMessage(message, error) {
+    const el = document.getElementById("message");
+    el.textContent = message;
+    el.className = "text-sm mt-4 " +
+      (error ? "text-red-600" : "text-slate-500");
+  }
+
+  function copyReport() {
+    if (!lastReport) return;
+
+    const report = [
+      "BÁO CÁO KIỂM TRA ĐỘ TIN CẬY TÊN MIỀN",
+      "Tên miền: " + lastReport.domain,
+      "DTS: " + lastReport.dts + "/100",
+      "PTS: " + lastReport.pts + "/100",
+      "",
+      "PHÂN TÍCH CÁC YẾU TỐ:",
+      ...lastReport.factors.map(f =>
+        `${f.name}: ${f.score}/100 - ${f.detail}`
+      ),
+      "",
+      "KHUYẾN NGHỊ:",
+      ...lastReport.recommendations.map(x => "- " + x),
+      "",
+      "Lưu ý: Điểm chỉ là ước lượng, không đảm bảo website an toàn."
+    ].join("\n");
+
+    navigator.clipboard.writeText(report)
+      .then(() => showMessage("Đã sao chép báo cáo.", false))
+      .catch(() => showMessage("Không thể sao chép báo cáo.", true));
+  }
+
+  function resetTool() {
+    lastReport = null;
+    document.getElementById("domainInput").value = "";
+    document.getElementById("resultSection").classList.add("hidden");
+    showMessage("", false);
+  }
+</script>
+</body>
+</html>
